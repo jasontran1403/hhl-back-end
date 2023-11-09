@@ -135,6 +135,7 @@ public class ExnessServiceImpl implements ExnessService {
 		Exness exness = exRepo.findByExness(exnessId).get();
 		exness.setActive(true);
 		exness.setMessage("");
+		exness.setReason("");
 		exRepo.save(exness);
 	}
 
@@ -172,7 +173,6 @@ public class ExnessServiceImpl implements ExnessService {
 	public void setMessage(String exnessId, String error) {
 		// TODO Auto-generated method stub
 		Exness exness = exRepo.findByExness(exnessId).get();
-		exness.setReason(error);
 		
 		User user = exness.getUser();
 		
@@ -188,6 +188,8 @@ public class ExnessServiceImpl implements ExnessService {
 			transfer.setReceiver(user.getEmail());
 			transfer.setTime(System.currentTimeMillis() / 1000);
 			transferRepo.save(transfer);
+		} else {
+			exness.setReason(error);
 		}
 		
 		exRepo.save(exness);

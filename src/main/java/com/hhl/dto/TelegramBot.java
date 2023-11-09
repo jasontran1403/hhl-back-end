@@ -47,14 +47,14 @@ public class TelegramBot extends TelegramLongPollingBot {
 
 	@Override
 	public String getBotUsername() {
-//		return "Hhl_alert_bot"; // Thay thế bằng username của bot
-		return "test_hedging_bot";
+		return "Hhl_alert_bot"; // Thay thế bằng username của bot
+//		return "test_hedging_bot";
 	}
 
 	@Override
 	public String getBotToken() {
-//		return "6552150295:AAGIZ2tHbCkLPxArnKauUp4kNiaPFqrOkA4"; // Thay thế bằng API Token của bot
-		return "6982812905:AAEctq3sdabNF-yXaHW0FmiyR45nrhlz08I";
+		return "6552150295:AAGIZ2tHbCkLPxArnKauUp4kNiaPFqrOkA4"; // Thay thế bằng API Token của bot
+//		return "6982812905:AAEctq3sdabNF-yXaHW0FmiyR45nrhlz08I";
 	}
 
 	// Phương thức gửi tin nhắn
@@ -111,16 +111,10 @@ public class TelegramBot extends TelegramLongPollingBot {
 								sendFormAmount(String.valueOf(chatId));
 								botState = BotState.WAITING_FOR_TRANSFER_AMOUNT;
 							} else {
-								if (exness.get().isActive()) {
-									sendMessageToChat(chatId, "Tài khoản Exness ID#" + exness.get().getExness() + " đang hoạt động!");
-									sendMenu(String.valueOf(chatId));
-									botState = BotState.NONE;
-								} else {
-									exService.transferCash(exness.get().getExness(), amount);
-									sendMessageToChat(chatId, "Chuyển thành công " + amount + " cho Exness ID#" + exness.get().getExness());
-									sendMenu(String.valueOf(chatId));
-									botState = BotState.NONE;
-								}
+								exService.transferCash(exness.get().getExness(), amount);
+								sendMessageToChat(chatId, "Chuyển thành công " + amount + " cho Exness ID#" + exness.get().getExness());
+								sendMenu(String.valueOf(chatId));
+								botState = BotState.NONE;
 							}
 						}catch (Exception e) {
 							sendMessageToChat(chatId, "Số điểm không hợp lệ!");
@@ -129,7 +123,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 						}
 					}
 				} else if (messageText.equals("Kích hoạt tài khoản Exness")) {
-					sendForm(String.valueOf(chatId));
+					sendFormExness(String.valueOf(chatId));
 					botState = BotState.WAITING_FOR_EXNESS_START;
 				} else if (botState == BotState.WAITING_FOR_EXNESS_START) {
 					if (messageText.equals("Thoát")) {
@@ -142,14 +136,20 @@ public class TelegramBot extends TelegramLongPollingBot {
 							sendFormExness(String.valueOf(chatId));
 							botState = BotState.WAITING_FOR_EXNESS_START;
 						} else {
-							if (exness.get().getUser().getCash() < 10_000) {
-								exService.setMessage(exness.get().getExness(), "Không đủ điểm để kích hoạt bot!");
-								sendMessageToChat(chatId, "Không đủ điểm để kích hoạt bot!");
+							if (exness.get().isActive()) {
+								sendMessageToChat(chatId, "Exness ID#" + exness.get().getExness() + " đang hoạt động!");
 								sendMenu(String.valueOf(chatId));
 								botState = BotState.NONE;
 							} else {
-								sendFormMessage(String.valueOf(chatId));
-								botState = BotState.WAITING_FOR_MESSAGE;
+								if (exness.get().getUser().getCash() < 10_000) {
+									exService.setMessage(exness.get().getExness(), "Không đủ điểm để kích hoạt bot!");
+									sendMessageToChat(chatId, "Không đủ điểm để kích hoạt bot!");
+									sendMenu(String.valueOf(chatId));
+									botState = BotState.NONE;
+								} else {
+									sendFormMessage(String.valueOf(chatId));
+									botState = BotState.WAITING_FOR_MESSAGE;
+								}
 							}
 						}
 					}
@@ -257,9 +257,9 @@ public class TelegramBot extends TelegramLongPollingBot {
 						sendMessageToChat(chatId, "Exness ID#" + id + " không tồn tại!");
 					} else {
 						if (!exness.get().isActive()) {
-							if (exness.get().getMessage() == null) {
-								sendMessageToChat(chatId, "This exness id " + exness.get().getExness()
-										+ " hadn't uploaded transaction image!");
+							if (exness.get().getMessage().equals(null) || exness.get().getMessage() == null || exness.get().getMessage().equals("")) {
+								sendMessageToChat(chatId, "Exness ID#" + exness.get().getExness()
+										+ " chưa cập nhật ảnh chuyển tiền!");
 								sendMenu(String.valueOf(chatId));
 								botState = BotState.NONE;
 							} else {
@@ -276,7 +276,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 								botState = BotState.WAITING_FOR_CONFIRM_ACTIVE;
 							}
 						} else {
-							sendMessageToChat(chatId, "This exness id " + exness.get().getExness() + " is running");
+							sendMessageToChat(chatId, "Exness ID#" + exness.get().getExness() + " đang hoạt động");
 							sendMenu(String.valueOf(chatId));
 							botState = BotState.NONE;
 						}
@@ -287,7 +287,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 						sendMenu(String.valueOf(chatId));
 					} else if (messageText.equals("Đồng ý")) {
 						exService.activeExness(exness.get().getExness());
-						sendMessageToChat(chatId, "Active exness id: " + exness.get().getExness() + " successful!");
+						sendMessageToChat(chatId, "Mở khoá Exness ID# " + exness.get().getExness() + " thành công!");
 						botState = BotState.NONE;
 						sendMenu(String.valueOf(chatId));
 					}
@@ -316,10 +316,10 @@ public class TelegramBot extends TelegramLongPollingBot {
 						if (result) {
 							String message = "Exness ID: " + exness.get().getExness() + "\nServer: "
 									+ exness.get().getServer() + "\nPassword: " + exness.get().getPassword()
-									+ "\nPassview: " + exness.get().getPassview() + "\n đã thuộc hệ thống của tài khoản Long_phan@ymail.com!";
+									+ "\nPassview: " + exness.get().getPassview() + "\nThuộc hệ thống của tài khoản ExAffiliates!";
 							sendMessageToChat(chatId, message);
 						} else {
-							String message = "Exness ID#" + exness.get().getExness() + " không thuộc hệ thống của tài khoản Long_phan@yamil.com!";
+							String message = "Exness ID#" + exness.get().getExness() + " không thuộc hệ thống của tài khoản ExAffiliates!";
 							sendMessageToChat(chatId, message);
 						}
 					} else {
@@ -411,7 +411,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 	public void sendFormLevel(String chatId) {
 		SendMessage message = new SendMessage();
 		message.setChatId(chatId);
-		message.setText("Nhập cấp bậc:");
+		message.setText("Chọn cấp bậc:");
 
 		// Tạo hàng cho nút thứ nhất
 		KeyboardRow row1 = new KeyboardRow();

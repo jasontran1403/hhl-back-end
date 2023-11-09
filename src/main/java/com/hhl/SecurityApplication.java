@@ -1,5 +1,6 @@
 package com.hhl;
 
+import java.text.DecimalFormat;
 import java.util.List;
 
 import org.springframework.boot.CommandLineRunner;
@@ -44,6 +45,7 @@ public class SecurityApplication {
 	// Chuyen status ve inactive
 	@Scheduled(cron = "0 30 7 1 * ?", zone = "GMT+7:00")
 	public void toggle() {
+		DecimalFormat df = new DecimalFormat("#.##");
 		List<User> usersHHLBranch = userService.getUsersByBranchName("HHL");
 		for (User userHHL : usersHHLBranch) {
 			String email = userHHL.getEmail();
@@ -53,30 +55,30 @@ public class SecurityApplication {
 			for (Exness exness : exnesses) {
 				double profit = proService.getTotalProfitLastMonth(exness.getExness());
 				if (profit > 0) {
-					String message = "Vui lòng chuyển đến Exness ID: 52166788 (email:Lucas9.ho@gmail.com) ";
+					String message = "[Exness ID#" + exness.getExness() +  "] vui lòng chuyển đến Exness ID#52166788 (email:Lucas9.ho@gmail.com) ";
 					if (exness.isSet()) {
 						if (exness.getLevel() == 1) {
-							message += "30% lợi nhuận của bạn, là: " + 0.3 * profit;
+							message += "30% lợi nhuận của bạn, là: " + df.format(0.3 * profit) + " USC";
 						} else if (exness.getLevel() == 2) {
-							message += "20% lợi nhuận của bạn, là: " + 0.2 * profit;
+							message += "20% lợi nhuận của bạn, là: " + df.format(0.2 * profit) + " USC";
 						} else if (exness.getLevel() == 3) {
-							message += "10% lợi nhuận của bạn, là: " + 0.1 * profit;
+							message += "10% lợi nhuận của bạn, là: " + df.format(0.1 * profit) + " USC";
 						} else if (exness.getLevel() == 4) {
-							message += "Cấp bậc của bạn đang là 4, bạn không cần chia sẻ lợi nhuận!";
+							message = "[Exness ID#" + exness.getExness() +" cấp bậc là 4, bạn không cần chia sẻ lợi nhuận!";
 						}
 					} else {
 						if (result < 20_000) {
 							exness.setLevel(1);
-							message += "30% lợi nhuận của bạn, là: " + 0.3 * profit;
+							message += "30% lợi nhuận của bạn, là: " + df.format(0.3 * profit) + " USC";
 						} else if (result >= 20_000 && result <= 50_000) {
 							exness.setLevel(2);
-							message += "20% lợi nhuận của bạn, là: " + 0.2 * profit;
+							message += "20% lợi nhuận của bạn, là: " + df.format(0.2 * profit) + " USC";
 						} else if (result >= 50_000 && result <= 100_000) {
 							exness.setLevel(3);
-							message += "10% lợi nhuận của bạn, là: " + 0.1 * profit;
+							message += "10% lợi nhuận của bạn, là: " + df.format(0.1 * profit) + " USC";
 						} else if (result > 100_000) {
 							exness.setLevel(4);
-							message += "Cấp bậc của bạn đang là 4, bạn không cần chia sẻ lợi nhuận!";
+							message = "[Exness ID#" + exness.getExness() +" cấp bậc là 4, bạn không cần chia sẻ lợi nhuận!";
 						}
 					}
 

@@ -7,17 +7,23 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hhl.config.JwtService;
+import com.hhl.dto.AuthResponse;
 import com.hhl.dto.EmailDto;
 import com.hhl.dto.ExnessResponse;
+import com.hhl.dto.LoginRequest;
 import com.hhl.dto.TelegramBot;
 import com.hhl.dto.UpdateInfoRequest;
 import com.hhl.exception.ExistedException;
@@ -257,7 +263,11 @@ public class AuthenticationService {
 		Optional<User> user = repository.findByEmail(email);
 
 		if (user.isEmpty()) {
-			throw new NotFoundException("Tài khoản không tồn tại.");
+			throw new NotFoundException("Tài khoản#" + email + " không tồn tại.");
+		}
+		List<Exness> exnesses = exRepo.findByUser(user.get());
+		if (exnesses.size() > 0) {
+			throw new NotFoundException("Tài khoản#" + email + " đã có Exness ID#" + exnesses.get(0).getExness() + ", không thể thêm Exness!");
 		}
 		if (type == 1) {
 			Optional<Exness> exnessToCheck = exRepo.findByExness(exness);
@@ -273,10 +283,20 @@ public class AuthenticationService {
 			exnessToUpdate.setPassview(passview);
 			exnessToUpdate.setActive(false);
 			exRepo.save(exnessToUpdate);
+			
+			boolean result = validateExness(exness);
 			String message = "Exness ID: " + exnessToUpdate.getExness() + "\nServer: " + exnessToUpdate.getServer()
 					+ "\nPassword: " + exnessToUpdate.getPassword() + "\nPassview: " + exnessToUpdate.getPassview()
 					+ "\nStatus: " + exnessToUpdate.isActive();
+			
+			if (result) {
+				message += "\nThuộc hệ thống của tài khoản ExAffiliates!";
+			} else {
+				message += "\nKhông thuộc hệ thống của tài khoản ExAffiliates!";
+			}
 			tele.sendMessageToChat(chatId, message);
+			
+			
 			return UpdateRefResponse.builder().status(200).message("Exness ID cập nhật thành công cho user: " + email)
 					.build();
 
@@ -624,6 +644,52 @@ public class AuthenticationService {
 		for (User referral : referrals) {
 			depthFirstSearch(referral, result);
 		}
+	}
+	
+	public boolean validateExness(String exnessId) {
+		// check co trong he thong hay
+		// curl -X GET --header 'Accept: application/json' --header 'Authorization: JWT
+		// eyJhbGciOiJSUzI1NiIsImtpZCI6InVzZXIiLCJ0eXAiOiJKV1QifQ.eyJqdGkiOiIyNGNiZDE0OTk0ZDg0ZjRkODk3OGE2YjY3YmQ4YTFmMiIsImV4cCI6MTY5ODY3MDAyNywiaXNzIjoiQXV0aGVudGljYXRpb24iLCJpYXQiOjE2OTg2NDg0MjcsInN1YiI6IjViYjhhYWE5MjExYTQwMTRiOGZiYjViNjNmYmY5NDA1IiwiYXVkIjpbInBhcnRuZXJzaGlwIl0sImFkZGl0aW9uYWxfcGFyYW1zIjp7IndsX2lkIjoiODcxMWI4YWEtY2M2OC00MTNhLTgwMzQtYzI3MTZhMmNlMTRhIn19.BrCE3O2ZoOllnX_ee5gxOynzxvZQLBZA5c9nQqP0EO8mSym3GLGU4wb_asJba1BshZT78jaTxEeIbttsxPN_-o_MMmDw41kNAvLnYxbESr9K4kXLY64UUUAGxGQt0szzZStNZXjj_a3ze5VReiE6zSg59apox-fgOFnepUhBW-dv7ah1STMw-4bvE-0JvqD0Fss_9_Yx7s5ElVrzpSJPV2dMaGcUh_A7eWxa_DdDBvQOJ7fXaQ8_jGsWxtcpFDCK1iW6pGVJAQL_5kWTAsP_Qx_JHr0UYI8FokyDXuZ7qJXRQcK-UQdbwy6PNqL-wKi1xe5s74iY4OOKsXfAiSch4AbTIa6JTRJXkegx78vZ0GzFIj5SntszY6kQ5PjPmjTm4P35hVWIKhoFAKPOpt23MjaD0g2PkSQRD8sVNhO0AKSA4Z1k-0h6ec94FaA9iR1Kz0bpdgzV6vZB702gcijm-fxLp0_xDTRhFJffOWrNP7JAA3MpFZMdsps3HHMTfc2TVG1w6BBdCw-pGHqyUOaId54riFskhK__4JLB4uRDnKy0Gn_liiHHCrYSbYYWuGv9ZLh0zwA1m8pBi8IlXd0YC03RLtRY0AOdeN9Km1lvCCrmzm8ZrmJlthk30wlud4KbJlOzogkgq2ULhU0gLFaujguHuiBrEYue64R-lDCBh-E'
+		// 'https://my.exnessaffiliates.com/api/reports/clients/?client_account=117057472'
+
+		String url = "https://my.exnessaffiliates.com/api/v2/auth/";
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.set("Content-Type", "application/json");
+		headers.set("Accept", "application/json");
+
+		LoginRequest loginRequest = new LoginRequest();
+		loginRequest.setLogin("Long_phan@ymail.com");
+		loginRequest.setPassword("Xitrum11");
+
+		HttpEntity<LoginRequest> request = new HttpEntity<>(loginRequest, headers);
+
+		ResponseEntity<AuthResponse> responseEntity = new RestTemplate().exchange(url, HttpMethod.POST, request,
+				AuthResponse.class);
+		if (responseEntity.getStatusCode().is2xxSuccessful()) {
+			AuthResponse authResponse = responseEntity.getBody();
+			String token = authResponse.getToken();
+
+			// Gọi API khác với token
+			// Ví dụ: Gửi yêu cầu GET đến một API sử dụng token
+			String apiUrl = "https://my.exnessaffiliates.com/api/reports/clients/?client_account=" + exnessId;
+
+			HttpHeaders headersWithToken = new HttpHeaders();
+			headersWithToken.set("Authorization", "JWT " + token);
+
+			HttpEntity<String> requestWithToken = new HttpEntity<>(headersWithToken);
+
+			ResponseEntity<String> apiResponse = new RestTemplate().exchange(apiUrl, HttpMethod.GET, requestWithToken,
+					String.class);
+			String json = apiResponse.getBody();
+			if (json.contains("data\":[]")) {
+				return false;
+			} else {
+				return true;
+			}
+		}
+
+		return true;
 	}
 
 }

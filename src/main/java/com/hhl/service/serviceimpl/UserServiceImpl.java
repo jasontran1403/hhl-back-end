@@ -62,7 +62,7 @@ public class UserServiceImpl implements UserService {
 		}
 		InfoResponse result = new InfoResponse();
 		result.setProfit(exness.get().getBalance());
-		result.setCommission(exness.get().getUser().getCommission());
+		result.setCommission(exness.get().getUser().getCash());
 		result.setProfits(profits);
 		result.setRank(exness.get().getLevel());
 		result.setCommissions(commissions);

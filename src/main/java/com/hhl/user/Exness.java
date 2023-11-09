@@ -35,7 +35,6 @@ public class Exness {
 	private int level;
 	private boolean isSet;
 	private double totalProfit;
-	private String refferal;
 	private boolean isActive;
 	@Column(columnDefinition="TEXT")
 	private String reason;

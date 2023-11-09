@@ -15,5 +15,6 @@ public class UpdateExnessRequest {
 	private String server;
 	private String password;
 	private String passview;
+	private String refferal;
 	private int type;
 }

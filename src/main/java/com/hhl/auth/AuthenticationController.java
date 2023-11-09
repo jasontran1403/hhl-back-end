@@ -1,6 +1,7 @@
 package com.hhl.auth;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hhl.dto.MessageRequest;
+import com.hhl.dto.TelegramBot;
 import com.hhl.service.BalanceService;
 import com.hhl.service.CommissionService;
 import com.hhl.service.ExnessService;
@@ -52,8 +55,8 @@ public class AuthenticationController {
 	private final ProfitService proService;
 	private final BalanceService balanceService;
 	private final CommissionService commissService;
-//	private final TelegramBot tele;
-//	private final Long chatId = Long.parseLong("-4095776689");
+	private final TelegramBot tele;
+	private final Long chatId = Long.parseLong("-4095776689");
 
 	@GetMapping("/test/{email}")
 	public List<Double> test(@PathVariable("email") String email) {
@@ -68,65 +71,92 @@ public class AuthenticationController {
 		return results;
 	}
 
-	@GetMapping("/test")
-	public String testtele() {
+	@GetMapping("/endpoint1")
+	public ResponseEntity<String> testtele() {
+		DecimalFormat df = new DecimalFormat("#.##");
 		List<User> usersHHLBranch = userService.getUsersByBranchName("HHL");
 		for (User userHHL : usersHHLBranch) {
 			String email = userHHL.getEmail();
 			double result = service.getTotalSales(email) / 100;
-			System.out.println(result);
-//			User user = userRepo.findByEmail(email).get();
-//			List<Exness> exnesses = exService.getByUser(user);
-//			for (Exness exness : exnesses) {
-//				double profit = proService.getTotalProfitLastMonth(exness.getExness());
-//				System.out.println(profit);
-//				if (profit > 0) {
-//					String message = "Vui lòng chuyển đến Exness ID: 52166788 (email:Lucas9.ho@gmail.com) ";
-//					if (exness.isSet()) {
-//						if (exness.getLevel() == 1) {
-//							message += "30% lợi nhuận của bạn, là: " + 0.3 * profit;
-//						} else if (exness.getLevel() == 2) {
-//							message += "20% lợi nhuận của bạn, là: " + 0.2 * profit;
-//						} else if (exness.getLevel() == 3) {
-//							message += "10% lợi nhuận của bạn, là: " + 0.1 * profit;
-//						} else if (exness.getLevel() == 4) {
-//							message += "Cấp bậc của bạn đang là 4, bạn không cần chia sẻ lợi nhuận!";
-//						}
-//					} else {
-//						if (result < 20_000) {
-//							exness.setLevel(1);
-//							message += "30% lợi nhuận của bạn, là: " + 0.3 * profit;
-//						} else if (result >= 20_000 && result <= 50_000) {
-//							exness.setLevel(2);
-//							message += "20% lợi nhuận của bạn, là: " + 0.2 * profit;
-//						} else if (result >= 50_000 && result <= 100_000) {
-//							exness.setLevel(3);
-//							message += "10% lợi nhuận của bạn, là: " + 0.1 * profit;
-//						} else if (result > 100_000) {
-//							exness.setLevel(4);
-//							message += "Cấp bậc của bạn đang là 4, bạn không cần chia sẻ lợi nhuận!";
-//						}
-//					}
+			User user = userRepo.findByEmail(email).get();
+			List<Exness> exnesses = exService.getByUser(user);
+			for (Exness exness : exnesses) {
+				double profit = proService.getTotalProfitLastMonth(exness.getExness());
+				if (profit > 0) {
+					String message = "[Exness ID#" + exness.getExness() +  "] vui lòng chuyển đến Exness ID#52166788 (email:Lucas9.ho@gmail.com) ";
+					if (exness.isSet()) {
+						if (exness.getLevel() == 1) {
+							message += "30% lợi nhuận của bạn, là: " + df.format(0.3 * profit) + " USC";
+							exness.setReason("Chuyển 30% lợi nhuận của bạn, là:" + df.format(0.3 * profit) +" USC đến Exness ID#52166788 (email:Lucas9.ho@gmail.com)!");
+						} else if (exness.getLevel() == 2) {
+							message += "20% lợi nhuận của bạn, là: " + df.format(0.2 * profit) + " USC";
+							exness.setReason("Chuyển 20% lợi nhuận của bạn, là:" + df.format(0.3 * profit) +" USC đến Exness ID#52166788 (email:Lucas9.ho@gmail.com)!");
+						} else if (exness.getLevel() == 3) {
+							message += "10% lợi nhuận của bạn, là: " + df.format(0.1 * profit) + " USC";
+							exness.setReason("Chuyển 10% lợi nhuận của bạn, là:" + df.format(0.3 * profit) +" USC đến Exness ID#52166788 (email:Lucas9.ho@gmail.com)!");
+						} else if (exness.getLevel() == 4) {
+							message = "[Exness ID#" + exness.getExness() +" cấp bậc là 4, bạn không cần chia sẻ lợi nhuận!";
+						}
+					} else {
+						if (result < 20_000) {
+							exness.setLevel(1);
+							exness.setReason("Chuyển 30% lợi nhuận của bạn, là:" + df.format(0.3 * profit) +" USC đến Exness ID#52166788 (email:Lucas9.ho@gmail.com)!");
+							message += "30% lợi nhuận của bạn, là: " + df.format(0.3 * profit) + " USC";
+						} else if (result >= 20_000 && result <= 50_000) {
+							exness.setLevel(2);
+							exness.setReason("Chuyển 20% lợi nhuận của bạn, là:" + df.format(0.3 * profit) +" USC đến Exness ID#52166788 (email:Lucas9.ho@gmail.com)!");
+							message += "20% lợi nhuận của bạn, là: " + df.format(0.2 * profit) + " USC";
+						} else if (result >= 50_000 && result <= 100_000) {
+							exness.setLevel(3);
+							message += "10% lợi nhuận của bạn, là: " + df.format(0.1 * profit) + " USC";
+							exness.setReason("Chuyển 10% lợi nhuận của bạn, là:" + df.format(0.3 * profit) +" USC đến Exness ID#52166788 (email:Lucas9.ho@gmail.com)!");
+						} else if (result > 100_000) {
+							exness.setLevel(4);
+							message = "[Exness ID#" + exness.getExness() +" cấp bậc là 4, bạn không cần chia sẻ lợi nhuận!";
+						}
+					}
 
-//					exRepo.save(exness);
-//					userRepo.save(user);
-//
-//					MessageRequest popup = new MessageRequest();
-//					popup.setMessage(message);
-//					popup.setEmail(user.getEmail());
-//					messService.saveMessage(popup);
-//				}
-//			}
+					exRepo.save(exness);
+					userRepo.save(user);
 
-//			List<Exness> exnessesToLock = exService.getAllExnessByBranch();
-//			for (Exness item : exnessesToLock) {
-//				if (item.getLevel() < 4) {
-//					item.setActive(false);
-//					exRepo.save(item);
-//				}
-//			}
+					MessageRequest popup = new MessageRequest();
+					popup.setMessage(message);
+					popup.setEmail(user.getEmail());
+					messService.saveMessage(popup);
+				}
+			}
+
+			List<Exness> exnessesToLock = exService.getAllExnessByBranch();
+			for (Exness item : exnessesToLock) {
+				if (item.getLevel() < 4) {
+					item.setActive(false);
+					exRepo.save(item);
+				}
+			}
 		}
-		return "OK";
+		return ResponseEntity.ok("OK");
+	}
+	
+	@GetMapping("/endpoint2")
+	public ResponseEntity<String> endpoint2() {
+		List<Exness> exnesses = exService.getAllExnessByBranch();
+		String message = "";
+		for (Exness item : exnesses) {
+			if (!item.isActive()) {
+				message += "Exness ID: " + item.getExness() + " chưa chuyển chia sẻ lợi nhuận tháng trước!\n";
+
+				MessageRequest popup = new MessageRequest();
+				popup.setMessage("Bạn chưa chuyển chia sẻ lợi nhuận tháng trước, tài khoản của bạn sẽ bị tắt BOT!");
+				popup.setEmail(item.getUser().getEmail());
+				messService.saveMessage(popup);
+			}
+		}
+
+		if (!message.equals("")) {
+			tele.sendMessageToChat(chatId, message);
+		}
+		
+		return ResponseEntity.ok("OK");
 	}
 
 	@GetMapping("/lock-all")
