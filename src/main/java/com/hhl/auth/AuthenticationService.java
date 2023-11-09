@@ -60,11 +60,32 @@ public class AuthenticationService {
 	private final TelegramBot tele;
 	private final Long chatId = Long.parseLong("-4095776689");
 
+	public List<ExnessResponse> getUserExnessByEmail(String email) {
+		List<Exness> exnesses = exRepo.findAll();
+		List<ExnessResponse> results = new ArrayList<>();
+
+		for (Exness exness : exnesses) {
+			if (exness.getUser().getBranchName().equals("HHL") && exness.getUser().getEmail().equals(email)) {
+				ExnessResponse response = new ExnessResponse();
+				response.setExnessId(exness.getExness());
+				response.setServer(exness.getServer());
+				response.setPassword(exness.getPassword());
+				response.setPassview(exness.getPassview());
+				response.setStatus(exness.isActive());
+				response.setMessage(exness.getMessage());
+				response.setError(exness.getReason());
+				results.add(response);
+			}
+		}
+
+		return results;
+	}
+
 	public void activeExness(String exness) {
 		Exness item = exRepo.findByExness(exness).get();
 		item.setActive(true);
 		exRepo.save(item);
-		
+
 		String message = "Exness ID: " + exness + " đã được active!";
 		tele.sendMessageToChat(chatId, message);
 	}
@@ -185,6 +206,49 @@ public class AuthenticationService {
 		var token = Token.builder().user(user).token(jwtToken).tokenType(TokenType.BEARER).expired(false).revoked(false)
 				.build();
 		tokenRepository.save(token);
+	}
+	
+	public ExnessResponse findExnessInfoByExnessId(String exnessId) {
+		Optional<Exness> exness = exRepo.findByExness(exnessId);
+		if (exness.isEmpty()) {
+			throw new ExistedException("Exness ID không tồn tại.");
+		}
+		
+		ExnessResponse result = new ExnessResponse();
+		result.setExnessId(exnessId);
+		result.setPassview(exness.get().getPassview());
+		result.setPassword(exness.get().getPassword());
+		result.setServer(exness.get().getServer());
+		
+		return result;
+		
+	}
+
+	@Transactional
+	public UpdateRefResponse editExness(String email, String exness, String server, String password, String passview) {
+		Optional<User> user = repository.findByEmail(email);
+
+		if (user.isEmpty()) {
+			throw new NotFoundException("Tài khoản không tồn tại.");
+		}
+		Optional<Exness> exnessToCheck = exRepo.findByExness(exness);
+		if (exnessToCheck.isEmpty()) {
+			throw new ExistedException("Exness ID không tồn tại.");
+		}
+		User userToUpdate = user.get();
+		Exness exnessToUpdate = exnessToCheck.get();
+		exnessToUpdate.setUser(userToUpdate);
+		exnessToUpdate.setExness(exness);
+		exnessToUpdate.setServer(server);
+		exnessToUpdate.setPassword(password);
+		exnessToUpdate.setPassview(passview);
+		exRepo.save(exnessToUpdate);
+		String message = "Exness ID: " + exnessToUpdate.getExness() + "\nServer: " + exnessToUpdate.getServer()
+				+ "\nPassword: " + exnessToUpdate.getPassword() + "\nPassview: " + exnessToUpdate.getPassview()
+				+ "\nStatus: " + exnessToUpdate.isActive();
+		tele.sendMessageToChat(chatId, message);
+		return UpdateRefResponse.builder().status(200).message("Exness ID cập nhật thành công")
+				.build();
 	}
 
 	@Transactional

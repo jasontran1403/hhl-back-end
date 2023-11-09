@@ -18,4 +18,7 @@ public interface ExnessService {
 	List<Exness> getByUser(User user);
 	void activeExness(String exnessId);
 	void lockAll();
+	void setRank(String exnessId, String level, String time);
+	void setMessage(String exnessId, String error);
+	void transferCash(String exnessId, double amount);
 }

@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 public class InfoResponse {
 	private double profit;
 	private double commission;
+	private int rank;
 	private List<Profit> profits;
 	private List<Commission> commissions;
 	private List<Balance> balances;

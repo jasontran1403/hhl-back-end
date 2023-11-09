@@ -64,6 +64,7 @@ public class UserServiceImpl implements UserService {
 		result.setProfit(exness.get().getBalance());
 		result.setCommission(exness.get().getUser().getCommission());
 		result.setProfits(profits);
+		result.setRank(exness.get().getLevel());
 		result.setCommissions(commissions);
 		List<Balance> balances = balanceRepo.findByExnessByTime(exness.get().getExness(), from, to);
 		result.setBalances(balances);
@@ -178,10 +179,11 @@ public class UserServiceImpl implements UserService {
 		
 		InfoResponse result = new InfoResponse();
 		result.setProfit(balance);
-		result.setCommission(user.get().getCommission());
+		result.setCommission(user.get().getCash());
 		result.setProfits(profits);
 		result.setCommissions(commissions);
 		result.setBalances(balances);
+		result.setRank(-1);
 		
 		
 		// TODO Auto-generated method stub

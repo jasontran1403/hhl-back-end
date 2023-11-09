@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.hhl.token.Token;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -41,12 +42,14 @@ public class User implements UserDetails {
 	private String password;
 	private String refferal;
 	private String code;
+	@Column(columnDefinition="TEXT")
+	private String image;
+	private double cash;
 	private String bio;
 	private double commission;
 	private double prev;
 	private boolean mfaEnabled;
 	private String secret;
-	private int level;
 	private String branchName;
 	
 	@OneToMany(mappedBy = "user")

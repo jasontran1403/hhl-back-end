@@ -3,7 +3,6 @@ package com.hhl.demo;
 import static dev.samstevens.totp.util.Utils.getDataUriForImage;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -13,12 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 
-import org.apache.poi.openxml4j.exceptions.PartAlreadyExistsException;
 import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -39,12 +33,14 @@ import com.hhl.auth.UpdateExnessRequest;
 import com.hhl.auth.UpdateRefRequest;
 import com.hhl.auth.UpdateRefResponse;
 import com.hhl.dto.ChangePasswordRequest;
+import com.hhl.dto.ExnessResponse;
 import com.hhl.dto.InfoResponse;
 import com.hhl.dto.NetworkDto;
 import com.hhl.dto.PreviousMonthResponse;
 import com.hhl.dto.TelegramBot;
 import com.hhl.dto.TwoFARequest;
 import com.hhl.dto.UpdateInfoRequest;
+import com.hhl.dto.UserUpdateExnessRequest;
 import com.hhl.exception.NotFoundException;
 import com.hhl.service.CommissionService;
 import com.hhl.service.ExnessService;
@@ -53,12 +49,14 @@ import com.hhl.service.ImageUploadService;
 import com.hhl.service.MessageService;
 import com.hhl.service.PrevService;
 import com.hhl.service.TransactionService;
+import com.hhl.service.TransferService;
 import com.hhl.service.UserService;
 import com.hhl.user.Exness;
 import com.hhl.user.ExnessRepository;
 import com.hhl.user.History;
 import com.hhl.user.Message;
 import com.hhl.user.Transaction;
+import com.hhl.user.Transfer;
 import com.hhl.user.User;
 import com.hhl.user.UserRepository;
 
@@ -97,35 +95,72 @@ public class DemoController {
 	private final TransactionService transactionService;
 	private final CommissionService commissService;
 	private final ImageUploadService uploadService;
+	private final TransferService transferService;
 	private final TelegramBot tele;
 	private final Long chatId = Long.parseLong("-4095776689");
 
+	@GetMapping("/get-all-exness/{email}")
+	public ResponseEntity<List<ExnessResponse>> get(@PathVariable("email") String email) {
+		List<ExnessResponse> listExness = service.getUserExnessByEmail(email);
+		return ResponseEntity.ok(listExness);
+	}
+
+	@GetMapping("/get-exness-info/{exnessId}")
+	public ResponseEntity<ExnessResponse> find(@PathVariable("exnessId") String exnessId) {
+		ExnessResponse exness = service.findExnessInfoByExnessId(exnessId);
+		return ResponseEntity.ok(exness);
+	}
+
+	@PostMapping("/edit-exness")
+	public ResponseEntity<UpdateRefResponse> edit(@RequestBody UserUpdateExnessRequest request) {
+		UpdateRefResponse result = new UpdateRefResponse();
+		Optional<User> user = userRepo.findByEmail(request.getEmail());
+		TimeProvider timeProvider = new SystemTimeProvider();
+		CodeGenerator codeGenerator = new DefaultCodeGenerator();
+		DefaultCodeVerifier verify = new DefaultCodeVerifier(codeGenerator, timeProvider);
+		verify.setAllowedTimePeriodDiscrepancy(0);
+
+		if (verify.isValidCode(user.get().getSecret(), request.getCode())) {
+			result = service.editExness(request.getEmail(), request.getExness(), request.getServer(),
+					request.getPassword(), request.getPassview());
+		} else {
+			result.setMessage("Sai 2FA");
+			result.setStatus(404);
+		}
+
+		return ResponseEntity.ok(result);
+	}
+
 	@PostMapping("/upload-transaction")
-	public ResponseEntity<String> uploadTransaction(@RequestParam("file") MultipartFile file, @RequestParam("exness") String exness) {
+	public ResponseEntity<String> uploadTransaction(@RequestParam("file") MultipartFile file,
+			@RequestParam("exness") String exness) {
 		Optional<Exness> exnessQuery = exService.findByExnessId(exness);
 		if (exnessQuery.isEmpty()) {
 			throw new NotFoundException("This exness is not existed!");
 		}
 		String fileName = "transaction_exxness_id" + exness;
 		String url = uploadService.uploadImage(file, fileName);
-		
+
 		if (url != null) {
+			if (exnessQuery.get().isActive()) {
+				return ResponseEntity.ok("Tài khoản đang hoạt động, không cần upload ảnh mới!");
+			}
 			exnessQuery.get().setMessage(url);
 			exRepo.save(exnessQuery.get());
-		    
-			String message = "Exness ID: " + exness + " đã cập nhật ảnh chuyển tiền!";
+
+			String message = "Exness ID: " + exness + " cập nhật ảnh chuyển tiền thành công!";
 			tele.sendMessageToChat(chatId, message);
-			return ResponseEntity.ok("OK");
+			return ResponseEntity.ok(message);
 		} else {
 			return ResponseEntity.ok("Error");
 		}
 	}
-	
+
 	@GetMapping
 	public ResponseEntity<String> sayHello() {
 		return ResponseEntity.ok("Hello from secured endpoint");
 	}
-	
+
 	@GetMapping("/get-total-commission/{email}")
 	public ResponseEntity<Double> getTotalCommission(@PathVariable("email") String email) {
 		double totalCommission = 0.0;
@@ -136,7 +171,6 @@ public class DemoController {
 		}
 		return ResponseEntity.ok(totalCommission);
 	}
-	
 
 	@GetMapping("/get-prev-data/{email}")
 	public ResponseEntity<PreviousMonthResponse> getPreviousMonthData(@PathVariable("email") String email) {
@@ -207,7 +241,13 @@ public class DemoController {
 		} else {
 			return "Disabled Failed";
 		}
+	}
 
+	@GetMapping("/get-all-transfer/{email}")
+	public ResponseEntity<List<Transfer>> getTransfer(@PathVariable("email") String email) {
+		List<Transfer> results = transferService.findAllTransferByEmail(email);
+		
+		return ResponseEntity.ok(results);
 	}
 
 	@GetMapping("/get-info-by-exness/exness={exnessId}&from={from}&to={to}")
@@ -232,107 +272,6 @@ public class DemoController {
 
 		Collections.sort(network);
 		return ResponseEntity.ok(network);
-	}
-
-	@SuppressWarnings("resource")
-	@PostMapping("/shareIB")
-	public ResponseEntity<String> shareIB(@RequestParam("file") MultipartFile file) {
-		if (file.isEmpty()) {
-			return ResponseEntity.ok("Bạn chưa đính kèm file dữ liệu");
-		}
-
-		HashMap<Integer, String> data = new HashMap<>();
-		InputStream inputStream = null;
-		Workbook workbook = null;
-
-		try {
-			// Đọc tệp Excel
-			inputStream = file.getInputStream();
-			workbook = new XSSFWorkbook(inputStream);
-			Sheet sheet = workbook.getSheetAt(0); // Chọn sheet cần đọc dữ liệu
-
-			Row headerRow = sheet.getRow(0);
-			if (headerRow == null) {
-				return ResponseEntity.ok("File không đúng định dạng (dữ liệu trống)");
-			} else if (headerRow.getPhysicalNumberOfCells() != 16) {
-				return ResponseEntity.ok("File không đúng định dạng (16 cột)");
-			}
-
-			String idHeader = getCellValueAsString(headerRow.getCell(0));
-			String rewardHeader = getCellValueAsString(headerRow.getCell(9));
-			String exnessIdHeader = getCellValueAsString(headerRow.getCell(14));
-
-			if (!"id".equals(idHeader)) {
-				return ResponseEntity.ok("File không đúng định dạng (cột thứ 1 không phải là id)");
-			}
-
-			if (!"reward".equals(rewardHeader)) {
-				return ResponseEntity.ok("File không đúng định dạng (cột thứ 10 không phải là reward)");
-			}
-
-			if (!"client_account".equals(exnessIdHeader)) {
-				return ResponseEntity
-						.ok("File không đúng định dạng (cột thứ 15 không phải là client_account - Exness ID)");
-			}
-
-			// Lặp qua từng dòng (bắt đầu từ dòng thứ 2, do dòng đầu tiên là tiêu đề)
-			for (int rowIndex = 1; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
-				Row row = sheet.getRow(rowIndex);
-
-				// Đọc giá trị từ cột thứ 4, 5 và 7
-				Cell cellTransaction = row.getCell(0);
-				Cell cellIB = row.getCell(9); // Cột thứ 5 (index 4)
-				Cell cellExnessId = row.getCell(14); // Cột thứ 7 (index 6)
-
-				// Kiểm tra xem cell4, cell5 và cell7 có dữ liệu không
-				if (cellTransaction != null && cellIB != null && cellExnessId != null) {
-					String ibTransaction = getCellValueAsString(cellTransaction);
-					String ibReward = getCellValueAsString(cellIB);
-					String exnessIdValue = getCellValueAsString(cellExnessId);
-					if (exnessIdValue.contains("E") || ibTransaction.contains("E")) {
-						// Xử lý giá trị số thập phân với dấu phẩy
-						double exnessIdDouble = Double.parseDouble(exnessIdValue);
-						long exnessIdLong = (long) exnessIdDouble;
-						exnessIdValue = String.valueOf(exnessIdLong);
-
-						double exnessTransactionDouble = Double.parseDouble(ibTransaction);
-						long exnessTransactionLong = (long) exnessTransactionDouble;
-						ibTransaction = String.valueOf(exnessTransactionLong);
-					}
-					String value = ibTransaction + "-" + ibReward + "-" + exnessIdValue;
-					data.put(rowIndex, value);
-
-				}
-			}
-			workbook.close();
-			inputStream.close();
-
-		} catch (IOException e) {
-			e.printStackTrace();
-			return ResponseEntity.ok("Lỗi khi đọc file!");
-		} catch (PartAlreadyExistsException pae) {
-			System.out.println(pae);
-			return ResponseEntity.ok("File ở chế độ Protected!");
-		}
-
-		data.forEach((key, value) -> {
-			int firstDashIndex = value.indexOf('-');
-			int secondDashIndex = value.indexOf('-', firstDashIndex + 1);
-			String exnessTransaction = value.substring(0, firstDashIndex);
-			String exnessId = value.substring(secondDashIndex + 1, value.length());
-			double amount = Double.parseDouble(value.substring(firstDashIndex + 1, secondDashIndex));
-			double amountToInvest = 0, amountToDev = 0;
-			int userLevel = exService.findUserByExness(exnessId).getLevel();
-			if (userLevel == 1) {
-				amountToInvest = amount * 0.5;
-				amountToDev = amount - amountToInvest;
-			} else if (userLevel == 2) {
-
-			}
-
-		});
-
-		return ResponseEntity.ok("OK");
 	}
 
 	@GetMapping("/get-message/email={email}")
@@ -391,10 +330,10 @@ public class DemoController {
 
 	@PostMapping("/update-exness")
 	public ResponseEntity<UpdateRefResponse> updateExness(@RequestBody UpdateExnessRequest request) {
-		return ResponseEntity.ok(service.updateExness(request.getEmail(), request.getExness(), request.getServer(), 
+		return ResponseEntity.ok(service.updateExness(request.getEmail(), request.getExness(), request.getServer(),
 				request.getPassword(), request.getPassview(), request.getType()));
 	}
-	
+
 	@GetMapping("/get-exness/exness={exness}")
 	public ResponseEntity<Exness> getExnessByExnessid(@PathVariable("exness") String exness) {
 		return ResponseEntity.ok(exService.findByExnessId(exness).orElse(null));
@@ -470,7 +409,7 @@ public class DemoController {
 			return ResponseEntity.notFound().build();
 		}
 	}
-	
+
 	@GetMapping("/transaction-image/{exness}")
 	public ResponseEntity<byte[]> getTransactionImage(@PathVariable("exness") String exness) {
 		// Lấy đường dẫn đến thư mục lưu trữ avatar (src/main/resources/assets/avatar)
@@ -574,7 +513,7 @@ public class DemoController {
 	public ResponseEntity<List<Transaction>> getTransactionByEmail(@PathVariable("email") String email) {
 		return ResponseEntity.ok(transactionService.findTransactionByEmail(email));
 	}
-	
+
 	@GetMapping("/get-history/email={email}")
 	public ResponseEntity<List<History>> getHistoryByEmail(@PathVariable("email") String email) {
 		return ResponseEntity.ok(hisService.findHistoryByEmail(email));

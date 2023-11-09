@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 public interface UserRepository extends JpaRepository<User, Integer> {
-
+	@Query(value = "select * from _user where email = ?1 and branch_name = 'HHL'", nativeQuery = true)
 	Optional<User> findByEmail(String email);
 
 	Optional<User> findByCode(String code);
@@ -18,6 +18,6 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 	@Query(value = "select * from _user where email = ?1", nativeQuery = true)
 	User getByEmail(String email);
 
-	@Query(value="select * from _user where branch_name = ?1", nativeQuery = true)
+	@Query(value="select * from _user where branch_name = ?1 and email != 'root@gmail.com'", nativeQuery = true)
 	List<User> getUsersByBranchName(String branchName);
 }

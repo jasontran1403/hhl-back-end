@@ -1,6 +1,7 @@
 package com.hhl.auth;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.hhl.dto.MessageRequest;
 import com.hhl.service.BalanceService;
 import com.hhl.service.CommissionService;
 import com.hhl.service.ExnessService;
@@ -54,12 +54,80 @@ public class AuthenticationController {
 	private final CommissionService commissService;
 //	private final TelegramBot tele;
 //	private final Long chatId = Long.parseLong("-4095776689");
-//	
-//	@GetMapping("/test/{message}")
-//	public String testtele(@PathVariable("message") String message) {
-//		tele.sendMessageToChat(chatId, message);
-//		return "OK";
-//	}
+
+	@GetMapping("/test/{email}")
+	public List<Double> test(@PathVariable("email") String email) {
+		List<User> userHHLBranch = userService.getUsersByBranchName("HHL");
+		List<Double> results = new ArrayList<>();
+		for (User user : userHHLBranch) {
+			email = user.getEmail();
+			double totalSales = service.getTotalSales(email) / 100;
+			results.add(totalSales);
+		}
+
+		return results;
+	}
+
+	@GetMapping("/test")
+	public String testtele() {
+		List<User> usersHHLBranch = userService.getUsersByBranchName("HHL");
+		for (User userHHL : usersHHLBranch) {
+			String email = userHHL.getEmail();
+			double result = service.getTotalSales(email) / 100;
+			System.out.println(result);
+//			User user = userRepo.findByEmail(email).get();
+//			List<Exness> exnesses = exService.getByUser(user);
+//			for (Exness exness : exnesses) {
+//				double profit = proService.getTotalProfitLastMonth(exness.getExness());
+//				System.out.println(profit);
+//				if (profit > 0) {
+//					String message = "Vui lòng chuyển đến Exness ID: 52166788 (email:Lucas9.ho@gmail.com) ";
+//					if (exness.isSet()) {
+//						if (exness.getLevel() == 1) {
+//							message += "30% lợi nhuận của bạn, là: " + 0.3 * profit;
+//						} else if (exness.getLevel() == 2) {
+//							message += "20% lợi nhuận của bạn, là: " + 0.2 * profit;
+//						} else if (exness.getLevel() == 3) {
+//							message += "10% lợi nhuận của bạn, là: " + 0.1 * profit;
+//						} else if (exness.getLevel() == 4) {
+//							message += "Cấp bậc của bạn đang là 4, bạn không cần chia sẻ lợi nhuận!";
+//						}
+//					} else {
+//						if (result < 20_000) {
+//							exness.setLevel(1);
+//							message += "30% lợi nhuận của bạn, là: " + 0.3 * profit;
+//						} else if (result >= 20_000 && result <= 50_000) {
+//							exness.setLevel(2);
+//							message += "20% lợi nhuận của bạn, là: " + 0.2 * profit;
+//						} else if (result >= 50_000 && result <= 100_000) {
+//							exness.setLevel(3);
+//							message += "10% lợi nhuận của bạn, là: " + 0.1 * profit;
+//						} else if (result > 100_000) {
+//							exness.setLevel(4);
+//							message += "Cấp bậc của bạn đang là 4, bạn không cần chia sẻ lợi nhuận!";
+//						}
+//					}
+
+//					exRepo.save(exness);
+//					userRepo.save(user);
+//
+//					MessageRequest popup = new MessageRequest();
+//					popup.setMessage(message);
+//					popup.setEmail(user.getEmail());
+//					messService.saveMessage(popup);
+//				}
+//			}
+
+//			List<Exness> exnessesToLock = exService.getAllExnessByBranch();
+//			for (Exness item : exnessesToLock) {
+//				if (item.getLevel() < 4) {
+//					item.setActive(false);
+//					exRepo.save(item);
+//				}
+//			}
+		}
+		return "OK";
+	}
 
 	@GetMapping("/lock-all")
 	public ResponseEntity<String> lockAll() {
@@ -69,14 +137,6 @@ public class AuthenticationController {
 			exRepo.save(item);
 		}
 		return ResponseEntity.ok("OK");
-	}
-
-	@GetMapping("/test/{email}")
-	public ResponseEntity<Double> test(@PathVariable("email") String email) {
-		double result = service.getTotalSales(email) / 100;
-		
-		// them message khi duoc duyet thanh cong
-		return ResponseEntity.ok(result);
 	}
 
 	@PostMapping("/register")

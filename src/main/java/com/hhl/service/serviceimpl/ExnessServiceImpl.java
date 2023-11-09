@@ -12,6 +12,8 @@ import com.hhl.user.Exness;
 import com.hhl.user.ExnessRepository;
 import com.hhl.user.Transaction;
 import com.hhl.user.TransactionRepository;
+import com.hhl.user.Transfer;
+import com.hhl.user.TransferRepository;
 import com.hhl.user.User;
 import com.hhl.user.UserRepository;
 
@@ -23,6 +25,7 @@ public class ExnessServiceImpl implements ExnessService {
 	private final ExnessRepository exRepo;
 	private final UserRepository userRepo;
 	private final TransactionRepository tranRepo;
+	private final TransferRepository transferRepo;
 
 	@Override
 	public User findUserByExness(String exnessId) {
@@ -148,6 +151,63 @@ public class ExnessServiceImpl implements ExnessService {
 				}
 			}
 		}
+	}
+
+	@Override
+	public void setRank(String exnessId, String level, String time) {
+		// TODO Auto-generated method stub
+		Exness exness = exRepo.findByExness(exnessId).get();
+		int rank = Integer.parseInt(level.split(" ")[1]);
+		exness.setLevel(rank);
+		if (time.equals("Vĩnh viễn")) {
+			exness.setSet(true);
+		} else if (time.equals("Bình thường")) {
+			exness.setSet(false);
+		}
+		
+		exRepo.save(exness);
+	}
+
+	@Override
+	public void setMessage(String exnessId, String error) {
+		// TODO Auto-generated method stub
+		Exness exness = exRepo.findByExness(exnessId).get();
+		exness.setReason(error);
+		
+		User user = exness.getUser();
+		
+		if (error.equalsIgnoreCase("OK")) {
+			user.setCash(user.getCash() - 10_000);
+			userRepo.save(user);
+			
+			exness.setActive(true);
+			
+			Transfer transfer = new Transfer();
+			transfer.setAmount(-10_000);
+			transfer.setType("Kích hoạt BOT");
+			transfer.setReceiver(user.getEmail());
+			transfer.setTime(System.currentTimeMillis() / 1000);
+			transferRepo.save(transfer);
+		}
+		
+		exRepo.save(exness);
+	}
+
+	@Override
+	public void transferCash(String exnessId, double amount) {
+		// TODO Auto-generated method stub
+		Exness exness = exRepo.findByExness(exnessId).get();
+		
+		User user = exness.getUser();
+		user.setCash(user.getCash() + amount);
+		userRepo.save(user);
+		
+		Transfer transfer = new Transfer();
+		transfer.setAmount(amount);
+		transfer.setReceiver(user.getEmail());
+		transfer.setType("Chuyển từ tài khoản ADMIN");
+		transfer.setTime(System.currentTimeMillis() / 1000);
+		transferRepo.save(transfer);
 	}
 
 }

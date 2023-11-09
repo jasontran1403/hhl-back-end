@@ -9,12 +9,11 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class ExnessResponse {
-	private String exnessId;
+public class UserUpdateExnessRequest {
+	private String email;
+	private String exness;
 	private String server;
 	private String password;
 	private String passview;
-	private boolean status;
-	private String error;
-	private String message;
+	private String code;
 }
