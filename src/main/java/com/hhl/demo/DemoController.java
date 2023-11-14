@@ -104,6 +104,12 @@ public class DemoController {
 		List<ExnessResponse> listExness = service.getUserExnessByEmail(email);
 		return ResponseEntity.ok(listExness);
 	}
+	
+	@GetMapping("/get-all-exness-refferal/{email}")
+	public ResponseEntity<List<ExnessResponse>> getRefferal(@PathVariable("email") String email) {
+		List<ExnessResponse> listExness = service.getUserExnessByRefferalEmail(email);
+		return ResponseEntity.ok(listExness);
+	}
 
 	@GetMapping("/get-exness-info/{exnessId}")
 	public ResponseEntity<ExnessResponse> find(@PathVariable("exnessId") String exnessId) {
@@ -300,24 +306,9 @@ public class DemoController {
 			}
 
 			for (User user : users) {
-				String uploadDirectory = "src/main/resources/assets/avatar";
-				Path uploadPath = Path.of(uploadDirectory);
-				String defaultFileName = "avatar_user_default.png";
-				// Xây dựng tên tệp dựa trên id
-				String fileName = "avatar_user_id_" + user.getId() + ".png";
-				Path filePath = uploadPath.resolve(fileName);
-				byte[] imageBytes = null;
-				if (!Files.exists(filePath)) {
-					filePath = uploadPath.resolve(defaultFileName);
-				}
+				double sales = service.getTotalSales(user.getEmail());
 
-				try {
-					imageBytes = Files.readAllBytes(filePath);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-
-				network.add(new NetworkDto(user.getEmail(), email, imageBytes, currentLevel));
+				network.add(new NetworkDto(user.getEmail(), email, sales, user.getImage(), currentLevel));
 				getUserNetwork(user.getEmail(), desiredLevel, currentLevel + 1, network);
 			}
 		}
@@ -331,7 +322,7 @@ public class DemoController {
 	@PostMapping("/update-exness")
 	public ResponseEntity<UpdateRefResponse> updateExness(@RequestBody UpdateExnessRequest request) {
 		return ResponseEntity.ok(service.updateExness(request.getEmail(), request.getExness(), request.getServer(),
-				request.getPassword(), request.getPassview(), request.getType()));
+				request.getPassword(), request.getPassview(), request.getRefferal(), request.getType()));
 	}
 
 	@GetMapping("/get-exness/exness={exness}")

@@ -35,7 +35,7 @@ public class AdminController {
     @PostMapping("/update-exness")
 	public ResponseEntity<UpdateRefResponse> updateExness(@RequestBody UpdateExnessRequest request) {
 		return ResponseEntity.ok(service.updateExness(request.getEmail(), request.getExness(), request.getServer(), 
-				request.getPassword(), request.getPassview(), request.getType()));
+				request.getPassword(), request.getPassview(), request.getRefferal(), request.getType()));
 	}
     
     @GetMapping("/active-exness/{exness}")

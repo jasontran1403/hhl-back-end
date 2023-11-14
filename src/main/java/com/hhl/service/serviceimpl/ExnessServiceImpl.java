@@ -170,20 +170,20 @@ public class ExnessServiceImpl implements ExnessService {
 	}
 
 	@Override
-	public void setMessage(String exnessId, String error) {
+	public void setMessage(String exnessId, String error, double fee) {
 		// TODO Auto-generated method stub
 		Exness exness = exRepo.findByExness(exnessId).get();
 		
 		User user = exness.getUser();
 		
 		if (error.equalsIgnoreCase("OK")) {
-			user.setCash(user.getCash() - 10_000);
+			user.setCash(user.getCash() - fee);
 			userRepo.save(user);
 			
 			exness.setActive(true);
 			
 			Transfer transfer = new Transfer();
-			transfer.setAmount(-10_000);
+			transfer.setAmount(fee);
 			transfer.setType("Kích hoạt BOT");
 			transfer.setReceiver(user.getEmail());
 			transfer.setTime(System.currentTimeMillis() / 1000);

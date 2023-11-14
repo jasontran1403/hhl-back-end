@@ -19,6 +19,6 @@ public interface ExnessService {
 	void activeExness(String exnessId);
 	void lockAll();
 	void setRank(String exnessId, String level, String time);
-	void setMessage(String exnessId, String error);
+	void setMessage(String exnessId, String error, double fee);
 	void transferCash(String exnessId, double amount);
 }

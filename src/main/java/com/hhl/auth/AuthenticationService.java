@@ -87,6 +87,29 @@ public class AuthenticationService {
 		return results;
 	}
 
+	public List<ExnessResponse> getUserExnessByRefferalEmail(String email) {
+		User user = repository.getByEmail(email);
+		String emailRef = user.getRefferal();
+		List<Exness> exnesses = exRepo.findAll();
+		List<ExnessResponse> results = new ArrayList<>();
+
+		for (Exness exness : exnesses) {
+			if (exness.getUser().getBranchName().equals("HHL") && exness.getUser().getEmail().equals(emailRef)) {
+				ExnessResponse response = new ExnessResponse();
+				response.setExnessId(exness.getExness());
+				response.setServer(exness.getServer());
+				response.setPassword(exness.getPassword());
+				response.setPassview(exness.getPassview());
+				response.setStatus(exness.isActive());
+				response.setMessage(exness.getMessage());
+				response.setError(exness.getReason());
+				results.add(response);
+			}
+		}
+
+		return results;
+	}
+
 	public void activeExness(String exness) {
 		Exness item = exRepo.findByExness(exness).get();
 		item.setActive(true);
@@ -143,7 +166,8 @@ public class AuthenticationService {
 		List<ExnessResponse> results = new ArrayList<>();
 
 		for (Exness exness : exnesses) {
-			if (exness.getUser().getBranchName().equals("HHL")) {
+			if (exness.getUser().getBranchName().equals("HHL")
+					&& !exness.getUser().getEmail().equals("admin@gmail.com")) {
 				ExnessResponse response = new ExnessResponse();
 				response.setExnessId(exness.getExness());
 				response.setServer(exness.getServer());
@@ -213,21 +237,21 @@ public class AuthenticationService {
 				.build();
 		tokenRepository.save(token);
 	}
-	
+
 	public ExnessResponse findExnessInfoByExnessId(String exnessId) {
 		Optional<Exness> exness = exRepo.findByExness(exnessId);
 		if (exness.isEmpty()) {
 			throw new ExistedException("Exness ID không tồn tại.");
 		}
-		
+
 		ExnessResponse result = new ExnessResponse();
 		result.setExnessId(exnessId);
 		result.setPassview(exness.get().getPassview());
 		result.setPassword(exness.get().getPassword());
 		result.setServer(exness.get().getServer());
-		
+
 		return result;
-		
+
 	}
 
 	@Transactional
@@ -253,22 +277,23 @@ public class AuthenticationService {
 				+ "\nPassword: " + exnessToUpdate.getPassword() + "\nPassview: " + exnessToUpdate.getPassview()
 				+ "\nStatus: " + exnessToUpdate.isActive();
 		tele.sendMessageToChat(chatId, message);
-		return UpdateRefResponse.builder().status(200).message("Exness ID cập nhật thành công")
-				.build();
+		return UpdateRefResponse.builder().status(200).message("Exness ID cập nhật thành công").build();
 	}
 
 	@Transactional
 	public UpdateRefResponse updateExness(String email, String exness, String server, String password, String passview,
-			int type) {
+			String refferal, int type) {
 		Optional<User> user = repository.findByEmail(email);
 
 		if (user.isEmpty()) {
 			throw new NotFoundException("Tài khoản#" + email + " không tồn tại.");
 		}
-		List<Exness> exnesses = exRepo.findByUser(user.get());
-		if (exnesses.size() > 0) {
-			throw new NotFoundException("Tài khoản#" + email + " đã có Exness ID#" + exnesses.get(0).getExness() + ", không thể thêm Exness!");
+
+		Optional<Exness> refferalExness = exRepo.findByExness(refferal);
+		if (refferalExness.isEmpty()) {
+			throw new NotFoundException("Tài khoản#" + refferal + " không tồn tại.");
 		}
+
 		if (type == 1) {
 			Optional<Exness> exnessToCheck = exRepo.findByExness(exness);
 			if (exnessToCheck.isPresent()) {
@@ -282,21 +307,21 @@ public class AuthenticationService {
 			exnessToUpdate.setPassword(password);
 			exnessToUpdate.setPassview(passview);
 			exnessToUpdate.setActive(false);
+			exnessToUpdate.setRefferal(refferalExness.get().getExness());
 			exRepo.save(exnessToUpdate);
-			
+
 			boolean result = validateExness(exness);
 			String message = "Exness ID: " + exnessToUpdate.getExness() + "\nServer: " + exnessToUpdate.getServer()
 					+ "\nPassword: " + exnessToUpdate.getPassword() + "\nPassview: " + exnessToUpdate.getPassview()
 					+ "\nStatus: " + exnessToUpdate.isActive();
-			
+
 			if (result) {
 				message += "\nThuộc hệ thống của tài khoản ExAffiliates!";
 			} else {
 				message += "\nKhông thuộc hệ thống của tài khoản ExAffiliates!";
 			}
 			tele.sendMessageToChat(chatId, message);
-			
-			
+
 			return UpdateRefResponse.builder().status(200).message("Exness ID cập nhật thành công cho user: " + email)
 					.build();
 
@@ -645,7 +670,36 @@ public class AuthenticationService {
 			depthFirstSearch(referral, result);
 		}
 	}
-	
+
+	public double getTotalSalesByExness(String exnessId) {
+		double totalSales = 0.0;
+
+		List<Exness> exnessListFromAtoE = new ArrayList<>();
+		Exness exnessA = exRepo.findByExness(exnessId).orElse(null);
+		if (exnessA != null) {
+			depthFirstSearchExness(exnessA, exnessListFromAtoE);
+		}
+		
+		for (Exness item : exnessListFromAtoE) {
+			List<Transaction> trans = tranService.findByExness(item.getExness());
+			for (Transaction tran : trans) {
+				if (tran.getType().equals("Deposit") && item.isActive()) {
+					totalSales += tran.getAmount();
+				}
+			}
+		}
+
+		return totalSales;
+	}
+
+	public void depthFirstSearchExness(Exness exness, List<Exness> result) {
+		result.add(exness);
+		List<Exness> referrals = exRepo.findByRefferal(exness.getExness());
+		for (Exness referral : referrals) {
+			depthFirstSearchExness(referral, result);
+		}
+	}
+
 	public boolean validateExness(String exnessId) {
 		// check co trong he thong hay
 		// curl -X GET --header 'Accept: application/json' --header 'Authorization: JWT

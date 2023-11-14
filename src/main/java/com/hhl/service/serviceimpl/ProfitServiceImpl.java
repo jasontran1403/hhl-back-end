@@ -57,7 +57,6 @@ public class ProfitServiceImpl implements ProfitService {
 
 		long timestampFrom = calendar.getTimeInMillis() / 1000 - daysInMonth * 86400 + 86400;
 
-		System.out.println(timestampFrom + " -- " + timestampTo);
 		Exness exness = exRepo.findByExness(exnessId).get();
 		List<Profit> profits = proRepo.findByTimeAndExness(timestampFrom, timestampTo, exness.getExness());
 		for (Profit profit : profits) {

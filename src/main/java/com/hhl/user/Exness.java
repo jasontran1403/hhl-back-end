@@ -33,6 +33,7 @@ public class Exness {
 	private double balance;
 	private double prevBalance;
 	private int level;
+	private String refferal;
 	private boolean isSet;
 	private double totalProfit;
 	private boolean isActive;
