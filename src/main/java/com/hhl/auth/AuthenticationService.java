@@ -310,17 +310,17 @@ public class AuthenticationService {
 			exnessToUpdate.setRefferal(refferalExness.get().getExness());
 			exRepo.save(exnessToUpdate);
 
-			boolean result = validateExness(exness);
+//			boolean result = validateExness(exness);
 			String message = "Exness ID: " + exnessToUpdate.getExness() + "\nServer: " + exnessToUpdate.getServer()
 					+ "\nPassword: " + exnessToUpdate.getPassword() + "\nPassview: " + exnessToUpdate.getPassview()
 					+ "\nStatus: " + exnessToUpdate.isActive();
 
-			if (result) {
-				message += "\nThuộc hệ thống của tài khoản ExAffiliates!";
-			} else {
-				message += "\nKhông thuộc hệ thống của tài khoản ExAffiliates!";
-			}
-			tele.sendMessageToChat(chatId, message);
+//			if (result) {
+//				message += "\nThuộc hệ thống của tài khoản ExAffiliates!";
+//			} else {
+//				message += "\nKhông thuộc hệ thống của tài khoản ExAffiliates!";
+//			}
+//			tele.sendMessageToChat(chatId, message);
 
 			return UpdateRefResponse.builder().status(200).message("Exness ID cập nhật thành công cho user: " + email)
 					.build();
